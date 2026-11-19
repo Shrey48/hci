@@ -4,18 +4,24 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = 'harmonia-secret-key-123'; // In prod, use environment variable
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    JWT_SECRET = crypto.randomBytes(48).toString('hex');
+    console.warn('WARNING: JWT_SECRET is not set; using a random secret, so logins will not survive a server restart.');
+}
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID'; // Replace with your ID
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+// Only public/ is served: the project root also holds server.js and database.sqlite.
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Database Setup
 const db = new sqlite3.Database('./database.sqlite', (err) => {
@@ -482,7 +488,7 @@ app.get('/api/users/tickets', authenticateToken, (req, res) => {
 
 // Fallback
 app.get(/^(?!\/api).*/, (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
